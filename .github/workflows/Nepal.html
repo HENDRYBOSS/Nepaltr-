@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nepaltr Pro - Trading Platform</title>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.1.1/firebase-database-compat.js"></script>
+
+    <style>
+        :root { --bg: #060d17; --panel: #111a27; --accent: #fcc419; --up: #00c076; --down: #ff3b30; --text: #ffffff; --text-dim: #848e9c; }
+        body, html { margin: 0; padding: 0; height: 100%; width: 100%; background: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; overflow: hidden; }
+
+        /* --- 1. POCKET BROKER LANDING PAGE --- */
+        #landing-page { position: fixed; inset: 0; z-index: 10000; background: var(--bg); overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .hero { text-align: center; padding: 40px 20px; background: linear-gradient(180deg, #0a1627 0%, #060d17 100%); width: 100%; box-sizing: border-box; }
+        .hero img { width: 100%; max-width: 300px; margin-bottom: 20px; border-radius: 15px; }
+        .hero h1 { font-size: 28px; margin: 10px 0; }
+        .hero p { color: var(--text-dim); margin-bottom: 30px; }
+        .btn-deposit { background: var(--accent); color: #000; border: none; padding: 15px 60px; border-radius: 5px; font-weight: bold; cursor: pointer; font-size: 16px; }
+
+        .auth-container { width: 100%; max-width: 400px; padding: 30px 20px; box-sizing: border-box; }
+        .auth-tabs { display: flex; gap: 10px; margin-bottom: 20px; }
+        .auth-tab { flex: 1; padding: 10px; text-align: center; border: 1px solid #2b3139; border-radius: 5px; cursor: pointer; }
+        .auth-tab.active { background: #1e2329; border-color: var(--accent); }
+        .input-f { width: 100%; padding: 15px; margin-bottom: 12px; background: #111a27; border: 1px solid #2b3139; color: white; border-radius: 5px; box-sizing: border-box; }
+        .btn-google { width: 100%; padding: 12px; background: white; color: black; border: none; border-radius: 5px; font-weight: bold; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; margin-top: 15px; }
+
+        /* --- 2. TRADING INTERFACE --- */
+        #app-interface { display: none; flex-direction: column; height: 100vh; }
+        header { display: flex; justify-content: space-between; align-items: center; padding: 0 15px; height: 60px; background: var(--panel); border-bottom: 1px solid #1c2735; }
+        .header-tools { display: flex; align-items: center; gap: 12px; }
+        .balance-display { text-align: right; cursor: pointer; }
+        .wallet-plus { background: var(--accent); color: black; width: 32px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-weight: bold; cursor: pointer; }
+
+        /* Trading Dock */
+        .trade-dock { background: var(--panel); border-top: 1px solid #1c2735; padding: 15px; display: flex; flex-direction: column; gap: 10px; }
+        .row { display: flex; gap: 10px; }
+        .ctrl { flex: 1; background: #060d17; padding: 5px 10px; border-radius: 8px; border: 1px solid #1c2735; }
+        .ctrl label { font-size: 10px; color: var(--text-dim); display: block; }
+        .ctrl input, .ctrl select { background: transparent; border: none; color: white; width: 100%; outline: none; font-weight: bold; font-size: 16px; }
+        .btn-trade { flex: 1; height: 55px; border: none; border-radius: 8px; font-weight: bold; font-size: 24px; color: white; cursor: pointer; }
+
+        /* Modal Layout */
+        #wallet-modal { position: fixed; inset: 0; background: rgba(0,0,0,0.9); display: none; z-index: 11000; justify-content: center; align-items: flex-end; }
+        .modal-box { background: var(--panel); width: 100%; max-width: 500px; border-radius: 20px 20px 0 0; padding: 30px; box-sizing: border-box; }
+        #qr-box { background: white; width: 200px; height: 200px; margin: 0 auto 15px; display: flex; align-items: center; justify-content: center; }
+        #qr-box img { width: 100%; height: 100%; object-fit: contain; border-radius: 0; }
+    </style>
+</head>
+<body>
+
+<div id="landing-page">
+    <div class="hero">
+        <img src="https://images.unsplash.com/photo-1611974717482-48206d289065?w=600" alt="Trader">
+        <h1>Your Trading Platform</h1>
+        <p>Join thousands of traders in Nepal</p>
+        <button class="btn-deposit" onclick="scrollToAuth()">START NOW</button>
+    </div>
+
+    <div class="auth-container" id="auth-section">
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tab-reg" onclick="toggleAuth('reg')">Registration</div>
+            <div class="auth-tab" id="tab-login" onclick="toggleAuth('login')">Sign In</div>
+        </div>
+        <input type="email" id="auth-email" class="input-f" placeholder="Email">
+        <input type="password" id="auth-pass" class="input-f" placeholder="Password">
+        <button class="btn-deposit" style="width:100%" id="auth-submit" onclick="processAuth()">REGISTRATION</button>
+        
+        <button class="btn-google" onclick="googleSignIn()">
+            <img src="https://img.icons8.com/color/24/000000/google-logo.png"/> Sign in with Google
+        </button>
+    </div>
+</div>
+
+<div id="app-interface">
+    <header>
+        <div onclick="alert('Sidebar')">☰ <b>Nepaltr</b></div>
+        <div class="header-tools">
+            <div class="balance-display" onclick="openWallet()">
+                <div style="font-size:10px; color:var(--text-dim)">Demo account ▼</div>
+                <div id="user-bal" style="font-weight:bold; color:var(--accent)">NPR 0.00</div>
+            </div>
+            <div class="wallet-plus" onclick="openWallet()">+</div>
+        </div>
+    </header>
+
+    <div id="chart-area" style="flex:1; background:#131722">
+        <div id="tv_widget" style="height:100%"></div>
+    </div>
+
+    <div class="trade-dock">
+        <div class="row">
+            <div class="ctrl">
+                <label>TIME</label>
+                <select id="trade-time">
+                    <option value="60">01:00</option>
+                    <option value="300">05:00</option>
+                </select>
+            </div>
+            <div class="ctrl">
+                <label>AMOUNT</label>
+                <input type="number" id="trade-amt" value="130">
+            </div>
+        </div>
+        <div class="row">
+            <button class="btn-trade" style="background:var(--up)" onclick="placeTrade('UP')">UP</button>
+            <button class="btn-trade" style="background:var(--down)" onclick="placeTrade('DOWN')">DOWN</button>
+        </div>
+    </div>
+</div>
+
+<div id="wallet-modal">
+    <div class="modal-box">
+        <div style="text-align:right; font-size:30px; cursor:pointer;" onclick="closeWallet()">×</div>
+        <h2 style="text-align:center">Deposit</h2>
+        <div id="qr-box">
+            <img id="admin-qr" src="">
+        </div>
+        <div style="text-align:center; margin-bottom:15px;">
+            <a id="dl-link" href="#" download style="color:var(--accent)">Download QR Code</a>
+        </div>
+        <input type="text" id="promo-input" class="input-f" placeholder="Promo Code">
+        <button class="btn-deposit" style="width:100%" onclick="submitDeposit()">Submit Deposit</button>
+    </div>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+<script>
+    const firebaseConfig = {
+        apiKey: "AIzaSy...", // Replace with your key
+        authDomain: "earning-website-644a7.firebaseapp.com",
+        databaseURL: "https://earning-website-644a7-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "earning-website-644a7",
+        storageBucket: "earning-website-644a7.firebasestorage.app",
+    };
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.database();
+
+    let currentMode = 'reg';
+
+    // --- Authentication ---
+    function toggleAuth(mode) {
+        currentMode = mode;
+        document.getElementById('tab-reg').classList.toggle('active', mode==='reg');
+        document.getElementById('tab-login').classList.toggle('active', mode==='login');
+        document.getElementById('auth-submit').innerText = mode==='reg' ? 'REGISTRATION' : 'SIGN IN';
+    }
+
+    function processAuth() {
+        const e = document.getElementById('auth-email').value;
+        const p = document.getElementById('auth-pass').value;
+        if(currentMode === 'reg') {
+            auth.createUserWithEmailAndPassword(e, p).catch(err => alert(err.message));
+        } else {
+            auth.signInWithEmailAndPassword(e, p).catch(err => alert(err.message));
+        }
+    }
+
+    function googleSignIn() {
+        const provider = new firebase.auth.GoogleAuthProvider();
+        auth.signInWithPopup(provider).catch(err => {
+            console.error(err);
+            alert("Ensure your domain is authorized in Firebase Console > Auth > Settings");
+        });
+    }
+
+    auth.onAuthStateChanged(user => {
+        if(user) {
+            document.getElementById('landing-page').style.display = 'none';
+            document.getElementById('app-interface').style.display = 'flex';
+            syncUser(user.uid);
+            initChart();
+        }
+    });
+
+    // --- Trading & Wallet Logic ---
+    function syncUser(uid) {
+        db.ref('users/' + uid).on('value', snap => {
+            const data = snap.val() || { balance: 0, firstDep: true };
+            document.getElementById('user-bal').innerText = "NPR " + data.balance.toFixed(2);
+        });
+        db.ref('settings/qrUrl').on('value', s => {
+            document.getElementById('admin-qr').src = s.val();
+            document.getElementById('dl-link').href = s.val();
+        });
+    }
+
+    async function submitDeposit() {
+        const uid = auth.currentUser.uid;
+        const promo = document.getElementById('promo-input').value.trim();
+        const amt = 1000; // Mock amount for example
+
+        const ref = db.ref('users/' + uid);
+        const snap = await ref.once('value');
+        const user = snap.val() || { balance: 0, firstDep: true };
+
+        let bonus = 0;
+        if(user.firstDep) {
+            bonus = amt * 0.20; // 20% First Deposit Bonus
+            if(promo === "NEPAL") bonus += amt * 0.10; // Extra Promo Bonus
+        }
+
+        await ref.update({
+            balance: user.balance + amt + bonus,
+            firstDep: false
+        });
+        alert(`Deposited ${amt}. Bonus added: ${bonus}`);
+        closeWallet();
+    }
+
+    function placeTrade(dir) {
+        alert(`Trade ${dir} placed at ${new Date().toLocaleTimeString()}`);
+    }
+
+    function openWallet() { document.getElementById('wallet-modal').style.display='flex'; }
+    function closeWallet() { document.getElementById('wallet-modal').style.display='none'; }
+    function scrollToAuth() { document.getElementById('auth-section').scrollIntoView({behavior:'smooth'}); }
+    function initChart() { new TradingView.widget({ "autosize": true, "symbol": "BINANCE:BTCUSDT", "interval": "1", "theme": "dark", "container_id": "tv_widget" }); }
+</script>
+</body>
+  </html>
